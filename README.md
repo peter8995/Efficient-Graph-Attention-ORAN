@@ -14,8 +14,6 @@ The model fuses three complementary branches over a feature-as-node graph and pr
 | Fusion       | Concatenate branches → mean-pool over N nodes → scalar regression                      | `MLP` head |
 | Anomaly      | Chebyshev k-σ threshold on signed / abs residuals (post-hoc, no feedback into model)   | k ∈ {2, 3} default |
 
-The code is a fully self-contained, reproducible reorganisation of `ORAN-Traffic-Prediction/model9/`.
-
 ## Repository layout
 
 ```
@@ -24,12 +22,6 @@ The code is a fully self-contained, reproducible reorganisation of `ORAN-Traffic
 ├── model.py                # TrafficModel (BiLSTM + GAT + FFT-Transformer + fusion)
 ├── anomaly.py              # Chebyshev calibration + overlay plotting helpers
 ├── train.py                # Training, evaluation, checkpointing, anomaly export
-├── draw_architecture.py    # Architecture diagram generator
-├── DESIGN.md               # Full design rationale + 21 decision logs
-├── brainstorming.md        # Q1–Q13 design discussion
-├── run_round2_embb.sh      # Reference experiment scripts
-├── run_round3_mmtc.sh
-├── run_round3_urllc.sh
 ├── requirements.txt
 └── README.md
 ```
@@ -98,15 +90,56 @@ Outputs are written to `results/<slice>_<timestamp>/` containing:
 
 ## Reproducing paper results
 
-The three reference scripts reproduce the best per-slice configurations (Round 2 / Round 3).
+The best per-slice configurations are listed below. Run each command individually,
+or copy them into a shell script of your own.
+
+### eMBB (R² ≈ 0.90, MSE)
 
 ```bash
-bash run_round2_embb.sh    # eMBB:  mse,  seq=30,  expected R² ≈ 0.90
-bash run_round3_mmtc.sh    # mMTC:  huber δ=1.0, seq=30, expected R² ≈ 0.30
-bash run_round3_urllc.sh   # uRLLC: huber δ=1.0, seq=30, expected R² ≈ 0.66
+python train.py \
+  --train_dirs tr0-9 tr11-14 tr16-27 --val_dirs tr10 --test_dirs tr15 \
+  --slice_type embb \
+  --epochs 100 --patience 30 --batch_size 1024 \
+  --learning_rate 1e-4 --scheduler cosine \
+  --rnn_type bilstm --sequence_length 30 \
+  --include_target_history true --readout mean \
+  --adj_type binary_selfloop \
+  --gat_head_merge mean --gat_final_head_merge mean \
+  --loss_type mse --lambda_smooth 0.0 \
+  --chebyshev_k 3.0 --anomaly_error_mode both
 ```
 
-Each script sweeps a small grid (head-merge, huber-δ) so adjust `BASE_ARGS` if you only want a single run.
+### mMTC (R² ≈ 0.30, Huber δ=1.0)
+
+```bash
+python train.py \
+  --train_dirs tr0-9 tr11-14 tr16-27 --val_dirs tr10 --test_dirs tr15 \
+  --slice_type mmtc \
+  --epochs 200 --patience 30 --batch_size 1024 \
+  --learning_rate 1e-4 --scheduler cosine \
+  --rnn_type bilstm --sequence_length 30 \
+  --include_target_history true --readout mean \
+  --adj_type binary_selfloop \
+  --gat_head_merge concat --gat_final_head_merge mean \
+  --loss_type huber --huber_delta 1.0 --lambda_smooth 0.0 \
+  --chebyshev_k 3.0 --anomaly_error_mode both
+```
+
+### uRLLC (R² ≈ 0.66, Huber δ=1.0)
+
+```bash
+python train.py \
+  --train_dirs tr0-9 tr11-14 tr16-27 --val_dirs tr10 --test_dirs tr15 \
+  --slice_type urllc \
+  --epochs 200 --patience 30 --batch_size 1024 \
+  --learning_rate 1e-4 --scheduler cosine \
+  --rnn_type bilstm --sequence_length 30 \
+  --include_target_history true --readout mean \
+  --adj_type binary_selfloop \
+  --gat_head_merge concat --gat_final_head_merge mean \
+  --loss_type huber --huber_delta 1.0 --lambda_smooth 0.0 \
+  --chebyshev_k 3.0 --anomaly_error_mode both
+```
 
 ## Manual training commands
 
@@ -174,8 +207,6 @@ python train.py ... --chebyshev_k 2.5 \
 
 ## Project status snapshot
 
-(see `DESIGN.md` for the full decision log)
-
 | Slice  | Best loss      | Best R²  | vs. LSTM-only baseline |
 |--------|----------------|---------:|------------------------:|
 | eMBB   | `mse`          | 0.901    | −0.07 |
@@ -190,4 +221,4 @@ If you use this code, please cite the accompanying paper:
 
 ## License
 
-Source code is released under the MIT License (see `LICENSE`). The Colosseum O-RAN ColORAN dataset is governed by its own license (see the dataset repository).
+The Colosseum O-RAN ColORAN dataset is governed by its own license (see the [dataset repository](https://github.com/wineslab/colosseum-oran-coloran-dataset)).
