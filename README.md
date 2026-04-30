@@ -22,6 +22,9 @@ The model fuses three complementary branches over a feature-as-node graph and pr
 ├── model.py                # TrafficModel (BiLSTM + GAT + FFT-Transformer + fusion)
 ├── anomaly.py              # Chebyshev calibration + overlay plotting helpers
 ├── train.py                # Training, evaluation, checkpointing, anomaly export
+├── scripts/
+│   ├── clean_dataset.py    # Strip non-metrics files & flatten nested dirs
+│   └── group_by_slice.py   # Reorganise CSVs into embb/mtc/urllc by IMSI UE ID
 ├── requirements.txt
 └── README.md
 ```
@@ -69,6 +72,36 @@ python train.py --data_root /any/other/path/colosseum-oran-coloran-dataset ...
 ```
 
 > Note: `mmtc` slice corresponds to the `mtc/` folder name in the dataset.
+
+### 3. Prepare the dataset directory layout
+
+The raw dataset is **not** in the structure `DataProcessor.py` expects
+(`tr{N}/exp*/bs*/{embb|mtc|urllc}/*_metrics.csv`). Two helper scripts in
+`scripts/` reshape it. **Always run with no flag first to dry-run, then add
+`--execute` once the summary looks right** (the operations are destructive).
+
+```bash
+# Step 1 — keep only *_metrics.csv, move them up one level, drop empty dirs
+python scripts/clean_dataset.py --dir Dataset/colosseum-oran-coloran-dataset                    # dry run
+python scripts/clean_dataset.py --dir Dataset/colosseum-oran-coloran-dataset --execute          # actually run
+
+# Step 2 — split CSVs into embb/ mtc/ urllc/ sub-folders by IMSI UE ID
+python scripts/group_by_slice.py --dir Dataset/colosseum-oran-coloran-dataset                   # dry run
+python scripts/group_by_slice.py --dir Dataset/colosseum-oran-coloran-dataset --execute         # actually run
+```
+
+After the two steps you should see:
+
+```
+Dataset/colosseum-oran-coloran-dataset/
+└── tr0/exp1/bs1/
+    ├── embb/1010123456003_metrics.csv
+    ├── mtc/1010123456004_metrics.csv
+    └── urllc/1010123456002_metrics.csv
+```
+
+UE-to-slice mapping is hardcoded in `scripts/group_by_slice.py` (eMBB UEs:
+3, 6, 10, 13, …; MTC UEs: 4, 7, 11, 14, …; URLLC UEs: 2, 5, 9, 12, …).
 
 ## Quick start
 
