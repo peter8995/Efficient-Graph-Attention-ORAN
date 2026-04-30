@@ -254,4 +254,4 @@ If you use this code, please cite the accompanying paper:
 
 ## License
 
-The Colosseum O-RAN ColORAN dataset is governed by its own license (see the [dataset repository](https://github.com/wineslab/colosseum-oran-coloran-dataset)).
+Source code is released under the MIT License (see [`LICENSE`](LICENSE)). The Colosseum O-RAN ColORAN dataset is governed by its own license (see the [dataset repository](https://github.com/wineslab/colosseum-oran-coloran-dataset)).
