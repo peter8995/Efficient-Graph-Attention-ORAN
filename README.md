@@ -100,8 +100,8 @@ Dataset/colosseum-oran-coloran-dataset/
     └── urllc/1010123456002_metrics.csv
 ```
 
-UE-to-slice mapping is hardcoded in `scripts/group_by_slice.py` (eMBB UEs:
-3, 6, 10, 13, …; MTC UEs: 4, 7, 11, 14, …; URLLC UEs: 2, 5, 9, 12, …).
+`group_by_slice.py` reads the `slice_id` column from each CSV directly
+(0 → embb, 1 → mtc, 2 → urllc) — no IMSI parsing needed.
 
 ## Quick start
 
